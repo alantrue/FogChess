@@ -1,4 +1,3 @@
-
 var Drag = false;
 var Turn = "a";
 var A, Q;
@@ -26,6 +25,9 @@ function init()
             Fb[i][j] = new Array;
         }
     }
+
+    initBoard();
+    initMirrorBoard();
 
     initChess("a4", 4, 1, 0, 9);//俥
     initChess("a5", 5, 2, 1, 9);//傌
@@ -95,10 +97,49 @@ function init()
     initMirrorChess("b74x", 2, 3);//卒
     initMirrorChess("b75x", 0, 3);//卒
 
+
     initFogA();
     initFogB();
     //refreshFogA();
     //refreshFogB();
+}
+
+function initBoard()
+{
+    var newDiv = document.createElement("div");
+
+    newDiv.id = "board";
+    newDiv.style.position = "absolute";
+    newDiv.style.zIndex = 0;
+    newDiv.style.width = "642px";
+    newDiv.style.height = "704px";
+    newDiv.style.backgroundImage = "url(images/Z.png)";
+    newDiv.style.backgroundRepeat = "no-repeat";
+    newDiv.style.left = 0 + "px";
+    newDiv.style.top = 0 + "px";
+    newDiv.onmouseover = mout;
+    //newDiv.onmousemove = mv;
+
+    document.body.appendChild(newDiv);
+}
+
+function initMirrorBoard()
+{
+    var newDiv = document.createElement("div");
+
+    newDiv.id = "mirrorBoard";
+    newDiv.style.position = "absolute";
+    newDiv.style.zIndex = 0;
+    newDiv.style.width = "642px";
+    newDiv.style.height = "704px";
+    newDiv.style.backgroundImage = "url(images/Z.png)";
+    newDiv.style.backgroundRepeat = "no-repeat";
+    newDiv.style.left = 730 + "px";
+    newDiv.style.top = 0 + "px";
+    newDiv.onmouseover = mout;
+    //newDiv.onmousemove = mv;
+
+    document.body.appendChild(newDiv);
 }
 
 function initChess(id, k, v, x, y)
@@ -117,7 +158,7 @@ function initChess(id, k, v, x, y)
     newDiv.style.backgroundRepeat = "no-repeat";
     newDiv.onmousedown = md;
     newDiv.onmousemove = mv;
-    newDiv.onmouseup = mup;
+    //newDiv.onmouseup = mup;
 
     if ((id.substr(0, 1) == "a" && id.substr(-1, 1) != "x") ||
         (id.substr(0, 1) == "b" && id.substr(-1, 1) == "x"))
@@ -125,15 +166,16 @@ function initChess(id, k, v, x, y)
         newDiv.style.left = 34 + x * 64 + "px";
         newDiv.style.top = 34 + y * 64 + "px";
 
-        document.body.appendChild(newDiv);
+        var board = document.getElementById("board");
+        board.appendChild(newDiv);
     }
     else
     {
         newDiv.style.left = 34 + (8 - x) * 64 + "px";
         newDiv.style.top = 34 + (9 - y) * 64 + "px";
 
-        var bg0 = document.getElementById("BG0");
-        bg0.appendChild(newDiv);
+        var board = document.getElementById("mirrorBoard");
+        board.appendChild(newDiv);
     }
 }
 
@@ -155,15 +197,16 @@ function initMirrorChess(id, x, y)
         newDiv.style.left = 34 + x * 64 + "px";
         newDiv.style.top = 34 + y * 64 + "px";
 
-        document.body.appendChild(newDiv);
+        var board = document.getElementById("board");
+        board.appendChild(newDiv);
     }
     else
     {
         newDiv.style.left = 34 + (8 - x) * 64 + "px";
         newDiv.style.top = 34 + (9 - y) * 64 + "px";
 
-        var bg0 = document.getElementById("BG0");
-        bg0.appendChild(newDiv);
+        var board = document.getElementById("mirrorBoard");
+        board.appendChild(newDiv);
     }
 }
 
@@ -188,7 +231,9 @@ function initFogA()
 
             newDiv.style.left = 34 + i * 64 + "px";
             newDiv.style.top = 34 + j * 64 + "px";
-            document.body.appendChild(newDiv);
+
+            var board = document.getElementById("board");
+            board.appendChild(newDiv);
         }
     }
 }
@@ -215,8 +260,8 @@ function initFogB()
             newDiv.style.left = 34 + (8 - i) * 64 + "px";
             newDiv.style.top = 34 + (9 - j) * 64 + "px";
 
-            var bg0 = document.getElementById("BG0");
-            bg0.appendChild(newDiv);
+            var board = document.getElementById("mirrorBoard");
+            board.appendChild(newDiv);
         }
     }
 }
@@ -334,13 +379,36 @@ function md(event)
         return;
     }
 
-    Drag = true; //進入拖曳狀態
-    Mdx = event.offsetX; //取得拖曳起點X
-    Mdy = event.offsetY; //取得拖曳起點Y
-    C.style.zIndex = 2; //提升拖曳中棋子的層次
-    C.style.cursor = "pointer"; //改變游標為手指按棋的圖示
-    X1 = p2g(C.style.posLeft); //換算網頁像素點座標為棋盤座標X
-    Y1 = p2g(C.style.posTop); //換算網頁像素點座標為棋盤座標Y
+    if (Drag)
+    {
+        Drag = false;
+        C.style.zIndex = 1; //恢復正常層次
+        C.style.cursor = "default"; //恢復正常游標
+
+        if (event.which == 1)
+        {
+            chess(C); //檢視下棋動作合法性
+        }
+        else
+        {
+            C.style.posLeft = g2p(X1);
+            C.style.posTop = g2p(Y1);
+            C.style.cursor = "default";
+            C.style.zIndex = 1;
+            Drag = false;
+        }
+    }
+    else
+    {
+        Drag = true;
+        C.style.zIndex = 2; //提升拖曳中棋子的層次
+        C.style.cursor = "pointer"; //改變游標為手指按棋的圖示
+
+        Mdx = event.offsetX; //取得拖曳起點X
+        Mdy = event.offsetY; //取得拖曳起點Y
+        X1 = p2g(C.style.posLeft); //換算網頁像素點座標為棋盤座標X
+        Y1 = p2g(C.style.posTop); //換算網頁像素點座標為棋盤座標Y
+    }
 }
 
 function mv(event)
@@ -352,7 +420,7 @@ function mv(event)
         C.style.posTop += event.offsetY - Mdy; //Y方向移動
     }
 }
-
+      /*
 function mup()
 {
     //如果是拖曳狀態
@@ -364,6 +432,7 @@ function mup()
         chess(C); //檢視下棋動作合法性
     }
 }
+*/
 
 //滑鼠離開棋子時
 function mout()
