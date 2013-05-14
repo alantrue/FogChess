@@ -3,6 +3,7 @@ var Turn = "a";
 var A, Q;
 var C, X1, Y1, Mdx, Mdy;
 var Fa, Fb;
+var FogAlpha = 1;
 
 function init()
 {
@@ -28,6 +29,8 @@ function init()
 
     initBoard();
     initMirrorBoard();
+    initFogA();
+    initFogB();
 
     initChess("a4", 4, 0, 9);//俥
     initChess("a5", 5, 1, 9);//傌
@@ -97,12 +100,7 @@ function init()
     initMirrorChess("b74x", 2, 3);//卒
     initMirrorChess("b75x", 0, 3);//卒
 
-    initFogA();
-    initFogB();
-    initChessFogA();
-    initChessFogB();
-    refreshFogA();
-    refreshFogB();
+    refreshFog();
 }
 
 function initBoard()
@@ -143,9 +141,6 @@ function initMirrorBoard()
 
 function initChess(id, k, x, y)
 {
-    A[x][y] = k;
-    Q[x][y] = id;
-
     var newDiv = document.createElement("div");
     newDiv.id = id;
     newDiv.style.position = "absolute";
@@ -174,6 +169,28 @@ function initChess(id, k, x, y)
         var board = document.getElementById("mirrorBoard");
         board.appendChild(newDiv);
     }
+
+    chessIn(newDiv, k, x, y);
+}
+
+function chessIn(c, k, x, y)
+{
+    updateChessVisible(x, y, false);
+    A[x][y] = k;
+    Q[x][y] = c.id;
+    updateChessVisible(x, y, true);
+
+    openChessVisible(c, x, y);
+}
+
+function chessOut(c, k, x, y)
+{
+    updateChessVisible(x, y, false);
+    A[x][y] = 0;
+    Q[x][y] = "";
+    updateChessVisible(x, y, true);
+
+    closeChessVisible(c, x, y);
 }
 
 function initMirrorChess(id, x, y)
@@ -217,12 +234,12 @@ function initFogA()
 
             newDiv.id = "fa" + i.toString() + j.toString();
             newDiv.style.position = "absolute";
-            newDiv.style.zIndex = 1;
+            newDiv.style.zIndex = 2;
             newDiv.style.width = "64px";
             newDiv.style.height = "64px";
             newDiv.style.backgroundImage = "url(images/fog.png)";
             newDiv.style.backgroundRepeat = "no-repeat";
-            newDiv.style.opacity = ".50";
+            newDiv.style.opacity = FogAlpha;
             newDiv.style.visibility = "hidden";
             newDiv.onmousemove = mv;
 
@@ -245,12 +262,12 @@ function initFogB()
 
             newDiv.id = "fb" + i.toString() + j.toString();
             newDiv.style.position = "absolute";
-            newDiv.style.zIndex = 1;
+            newDiv.style.zIndex = 2;
             newDiv.style.width = "64px";
             newDiv.style.height = "64px";
             newDiv.style.backgroundImage = "url(images/fog.png)";
             newDiv.style.backgroundRepeat = "no-repeat";
-            newDiv.style.opacity = ".50";
+            newDiv.style.opacity = FogAlpha;
             newDiv.style.visibility = "hidden";
             newDiv.onmousemove = mv;
 
@@ -263,43 +280,7 @@ function initFogB()
     }
 }
 
-function initChessFogA()
-{
-    for (var i = 0; i < 9; ++i)
-    {
-        for (var j = 0; j < 10; ++j)
-        {
-            var id = Q[i][j];
-
-            if (id != "" &&
-                id.substr(0, 1) == "a")
-            {
-                var c = document.getElementById(id);
-                openChessFog(Fa, c, i, j);
-            }
-        }
-    }
-}
-
-function initChessFogB()
-{
-    for (var i = 0; i < 9; ++i)
-    {
-        for (var j = 0; j < 10; ++j)
-        {
-            var id = Q[i][j];
-
-            if (id != "" &&
-                id.substr(0, 1) == "b")
-            {
-                var c = document.getElementById(id);
-                openChessFog(Fb, c, i, j);
-            }
-        }
-    }
-}
-
-function refreshFogA()
+function refreshFog()
 {
     for (var i = 0; i < 9; ++i)
     {
@@ -315,10 +296,7 @@ function refreshFogA()
             }
         }
     }
-}
 
-function refreshFogB()
-{
     for (var i = 0; i < 9; ++i)
     {
         for (var j = 0; j < 10; ++j)
@@ -335,23 +313,122 @@ function refreshFogB()
     }
 }
 
-function openChessFog(f, c, x, y)
+function openChessVisible(c, x, y)
 {
+    var f = (c.id.substr(0, 1) == "a" ? Fa : Fb);
+
     for (var i = 0; i < 9; ++i)
     {
         for (var j = 0; j < 10; ++j)
         {
-            if ((x == i && y == j) ||
-                canMove(c, x, y, i, j))
+            if ((x == i && y == j))
             {
-                openFog(f[i][j], c.id);
+                addVisible(f[i][j], c.id);
+            }
+            else if (canMove(c, x, y, i, j))
+            {
+                addVisible(f[i][j], c.id);
             }
         }
     }
 }
 
-function closeChessFog(f, c, x, y)
+function updateChessVisible(x, y, open)
 {
+    //x, y為中心, X象+馬, 直橫車炮
+    refreshHorseVisible(x, y, open);
+    refreshElephantVisible(x, y, open);
+    refreshCannonAndCarVisible(x, y, open);
+}
+
+function refreshHorseVisible(x, y, open)
+{
+    var horsePos =
+    [
+        [x - 1, y],
+        [x + 1, y],
+        [x, y - 1],
+        [x, y + 1]
+    ];
+
+    for (var i = 0; i < horsePos.length; ++i)
+    {
+        var pos = horsePos[i];
+        var x = pos[0];
+        var y = pos[1];
+        if (x < 0 || x > 8 ||
+            y < 0 || y > 9)
+        {
+            continue;
+        }
+
+        refreshChessVisible(5, x, y, open);
+    }
+}
+
+function refreshElephantVisible(x, y, open)
+{
+    var elephantPos =
+        [
+            [x - 1, y - 1],
+            [x - 1, y + 1],
+            [x + 1, y - 1],
+            [x + 1, y + 1]
+        ];
+
+    for (var i = 0; i < elephantPos.length; ++i)
+    {
+        var pos = elephantPos[i];
+        var x = pos[0];
+        var y = pos[1];
+        if (x < 0 || x > 8 ||
+            y < 0 || y > 9)
+        {
+            continue;
+        }
+
+        refreshChessVisible(3, x, y, open);
+    }
+}
+
+function refreshCannonAndCarVisible(x, y, open)
+{
+    for (var i = 0; i < 9; ++i)
+    {
+        refreshChessVisible(4, i, y, open);
+        refreshChessVisible(6, i, y, open);
+    }
+
+    for (var j = 0; j < 10; ++j)
+    {
+        refreshChessVisible(4, x, j, open);
+        refreshChessVisible(6, x, j, open);
+    }
+}
+
+function refreshChessVisible(q, x, y, open)
+{
+    var id = Q[x][y];
+
+    if (id && id.substr(1, 1) == q)
+    {
+        var c = document.getElementById(id);
+
+        if (open)
+        {
+            openChessVisible(c, x, y);
+        }
+        else
+        {
+            closeChessVisible(c, x, y);
+        }
+    }
+}
+
+function closeChessVisible(c, x, y)
+{
+    var f = (c.id.substr(0, 1) == "a" ? Fa : Fb);
+
     for (var i = 0; i < 9; ++i)
     {
         for (var j = 0; j < 10; ++j)
@@ -359,7 +436,7 @@ function closeChessFog(f, c, x, y)
             if ((x == i && y == j) ||
                 canMove(c, x, y, i, j))
             {
-                closeFog(f[i][j], c.id);
+                removeVisible(f[i][j], c.id);
             }
         }
     }
@@ -375,15 +452,15 @@ function hideFog(w, x, y)
     document.getElementById("f" + w + x + y).style.visibility = "hidden";
 }
 
-function openFog(f, id)
+function addVisible(f, id)
 {
-    if (!hasOpenFog(f, id))
+    if (!inVisible(f, id))
     {
         f.push(id);
     }
 }
 
-function closeFog(f, id)
+function removeVisible(f, id)
 {
     for (var i = 0; i < f.length; ++i)
     {
@@ -394,7 +471,7 @@ function closeFog(f, id)
     }
 }
 
-function hasOpenFog(f, id)
+function inVisible(f, id)
 {
     for (var i = 0; i < f.length; ++i)
     {
@@ -496,8 +573,6 @@ function chess(C)
         y2 = 9 - y2;
     }
 
-    var k = A[X1][Y1];
-
     if (!canMove(C, X1, Y1, x2, y2) || inFog(w, x2, y2))
     {
         if (w == "b")
@@ -510,24 +585,17 @@ function chess(C)
         return;
     }
 
-
     //目的地有對方棋子→吃棋
     if (A[x2][y2] != 0)
     {
         var d = document.getElementById(Q[x2][y2]);
         d.style.visibility = "hidden"; //隱藏對方被吃的棋子
 
-        if (w == "a")
-        {
-            closeChessFog(Fb, d, x2, y2);
-        }
-        else if(w == "b")
-        {
-            closeChessFog(Fa, d, x2, y2);
-        }
 
         var dd = document.getElementById(Q[x2][y2] + "x");
         dd.style.visibility = "hidden";//隱藏對方被吃的棋子
+
+        chessOut(d, A[x2][y2], x2, y2);
 
         //將帥被吃了
         if (d.id.substr(1, 1) == "1")
@@ -536,28 +604,10 @@ function chess(C)
         }//重玩囉
     }
 
-    if (w == "a")
-    {
-        closeChessFog(Fa, C, X1, Y1);
-    }
-    else if (w == "b")
-    {
-        closeChessFog(Fb, C, X1, Y1);
-    }
+    var k = A[X1][Y1];
 
-    A[x2][y2] = A[X1][Y1]; //更新棋種陣列資訊
-    Q[x2][y2] = Q[X1][Y1]; //更新物件名稱資訊
-    A[X1][Y1] = 0; //清除原位置資訊
-    Q[X1][Y1] = ""; //清除原位置資訊
-
-    if (w == "a")
-    {
-        openChessFog(Fa, C, x2, y2);
-    }
-    else if( w == "b")
-    {
-        openChessFog(Fb, C, x2, y2);
-    }
+    chessOut(C, k, X1, Y1);
+    chessIn(C, k, x2, y2);
 
     if (w == "b")
     {
@@ -589,8 +639,7 @@ function chess(C)
         //BG.style.borderColor = "red";//邊框變化
     }
 
-    refreshFogA();
-    refreshFogB();
+    refreshFog();
 
     C = null; //清除選定棋子物件
 }
