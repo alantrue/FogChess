@@ -2,7 +2,8 @@ var Drag = false;
 var Turn = "a";
 var A, Q;
 var C, X1, Y1, Mdx, Mdy;
-var Fa, Fb;
+var Fa, Fb;     //迷霧可視
+var FFa, FFb;   //攻擊可視
 var FogAlpha = 1;
 
 function init()
@@ -10,20 +11,27 @@ function init()
     A = new Array(9); //宣告棋種屬性分布的陣列
     Q = new Array(9); //宣告棋子ID分布的陣列
     Fa = new Array(9);
+    FFa = new Array(9);
     Fb = new Array(9);
+    FFb = new Array(9);
 
     for (var i = 0; i < 9; ++i)
     {
         A[i] = new Array(10); //宣告棋種次級陣列
         Q[i] = new Array(10); //宣告ID次級陣列
         Fa[i] = new Array(10);
+        FFa[i] = new Array(10);
         Fb[i] = new Array(10);
+        FFb[i] = new Array(10);
         for (var j = 0; j < 10; ++j)
         {
             A[i][j] = 0; //棋種代碼預設值
             Q[i][j] = ""; //ID預設值→空字串
             Fa[i][j] = new Array;
+            FFa[i][j] = new Array;
             Fb[i][j] = new Array;
+            FFb[i][j] = new Array;
+
         }
     }
 
@@ -178,19 +186,17 @@ function chessIn(c, k, x, y)
     updateChessVisible(x, y, false);
     A[x][y] = k;
     Q[x][y] = c.id;
-    updateChessVisible(x, y, true);
-
     openChessVisible(c, x, y);
+    updateChessVisible(x, y, true);
 }
 
 function chessOut(c, k, x, y)
 {
     updateChessVisible(x, y, false);
+    closeChessVisible(c, x, y);
     A[x][y] = 0;
     Q[x][y] = "";
     updateChessVisible(x, y, true);
-
-    closeChessVisible(c, x, y);
 }
 
 function initMirrorChess(id, x, y)
@@ -286,7 +292,7 @@ function refreshFog()
     {
         for (var j = 0; j < 10; ++j)
         {
-            if (Fa[i][j].length > 0)
+            if (Fa[i][j].length > 0 || FFa[i][j].length > 0)
             {
                 hideFog("a", i, j);
             }
@@ -301,7 +307,7 @@ function refreshFog()
     {
         for (var j = 0; j < 10; ++j)
         {
-            if (Fb[i][j].length > 0)
+            if (Fb[i][j].length > 0 || FFb[i][j].length > 0)
             {
                 hideFog("b", i, j);
             }
@@ -316,6 +322,7 @@ function refreshFog()
 function openChessVisible(c, x, y)
 {
     var f = (c.id.substr(0, 1) == "a" ? Fa : Fb);
+    var ff = (c.id.substr(0, 1) == "a" ? FFb : FFa);
 
     for (var i = 0; i < 9; ++i)
     {
@@ -325,11 +332,39 @@ function openChessVisible(c, x, y)
             {
                 addVisible(f[i][j], c.id);
             }
-            else if (canMove(c, x, y, i, j))
+            else if (canVisible(c, x, y, i, j))
             {
                 addVisible(f[i][j], c.id);
             }
         }
+    }
+
+    if (canAttackPalace(c, x, y))
+    {
+        addVisible(ff[x][y], c.id);
+    }
+}
+
+function closeChessVisible(c, x, y)
+{
+    var f = (c.id.substr(0, 1) == "a" ? Fa : Fb);
+    var ff = (c.id.substr(0, 1) == "a" ? FFb : FFa);
+
+    for (var i = 0; i < 9; ++i)
+    {
+        for (var j = 0; j < 10; ++j)
+        {
+            if ((x == i && y == j) ||
+                canVisible(c, x, y, i, j))
+            {
+                removeVisible(f[i][j], c.id);
+            }
+        }
+    }
+
+    if (canAttackPalace(c, x, y))
+    {
+        removeVisible(ff[x][y], c.id);
     }
 }
 
@@ -421,23 +456,6 @@ function refreshChessVisible(q, x, y, open)
         else
         {
             closeChessVisible(c, x, y);
-        }
-    }
-}
-
-function closeChessVisible(c, x, y)
-{
-    var f = (c.id.substr(0, 1) == "a" ? Fa : Fb);
-
-    for (var i = 0; i < 9; ++i)
-    {
-        for (var j = 0; j < 10; ++j)
-        {
-            if ((x == i && y == j) ||
-                canMove(c, x, y, i, j))
-            {
-                removeVisible(f[i][j], c.id);
-            }
         }
     }
 }
@@ -644,6 +662,81 @@ function chess(C)
     C = null; //清除選定棋子物件
 }
 
+function canAttackPalace(c, x, y)
+{
+    var posStart, posEnd;
+
+    if (c.id.substr(0, 1) == "a")
+    {
+        posStart = [3, 0];
+        posEnd = [6, 3];
+    }
+    else
+    {
+        posStart = [3, 7];
+        posEnd = [6, 10];
+    }
+
+    for (var i = posStart[0]; i < posEnd[0]; ++i)
+    {
+        for (var j = posStart[1]; j < posEnd[1]; ++j)
+        {
+            if (canAttack(c, x, y, i, j))
+            {
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
+
+function canAttack(c, x1, y1, x2, y2)
+{
+    var w = c.id.substr(0, 1);
+    var k = A[x1][y1];
+
+    var legal = false;
+    switch (k)
+    {
+    case 4: //俥
+    case -4: //車
+        legal = straight(x1, y1, x2, y2) && between(x1, y1, x2, y2) == 0;
+        break;
+    case 5: //傌
+    case -5: //馬
+        legal = horsestep(x1, y1, x2, y2) && freeHorse(x1, y1, x2, y2);
+        break;
+    case 6: //炮
+    case -6: //包
+        legal = straight(x1, y1, x2, y2) && cannonStep(x1, y1, x2, y2);
+        break;
+    case 7: //兵
+    case -7: //卒
+        legal = onestep(x1, y1, x2, y2) && soldier(-1, y1, y2);
+        break;
+    }
+
+    return legal;
+}
+
+function canVisible(c, x1, y1, x2, y2)
+{
+    var w = c.id.substr(0, 1);
+    var k = A[x1][y1];
+
+    var legal = false;
+    switch (k)
+    {
+    case 6: //炮
+    case -6: //包
+        legal = straight(x1, y1, x2, y2) && cannonStep(x1, y1, x2, y2);
+        break;
+    }
+
+    return legal || canMove(c, x1, y1, x2, y2);
+}
+
 function canMove(c, x1, y1, x2, y2)
 {
     var w = c.id.substr(0, 1);
@@ -659,14 +752,10 @@ function canMove(c, x1, y1, x2, y2)
     switch (k)
     {
     case 1: //帥
-        legal = onestep(x1, y1, x2, y2) && inpalace(w, x2, y2);
-        break;
     case -1: //將
         legal = onestep(x1, y1, x2, y2) && inpalace(w, x2, y2);
         break;
     case 2: //仕
-        legal = dgn(1, x1, y1, x2, y2) && inpalace(w, x2, y2);
-        break;
     case -2: //士
         legal = dgn(1, x1, y1, x2, y2) && inpalace(w, x2, y2);
         break;
@@ -677,20 +766,14 @@ function canMove(c, x1, y1, x2, y2)
         legal = dgn(2, x1, y1, x2, y2) && (y2 <= 4) && freeElephant(x1, y1, x2, y2);
         break;
     case 4: //俥
-        legal = straight(x1, y1, x2, y2) && between(x1, y1, x2, y2) == 0;
-        break;
     case -4: //車
         legal = straight(x1, y1, x2, y2) && between(x1, y1, x2, y2) == 0;
         break;
     case 5: //傌
-        legal = horsestep(x1, y1, x2, y2) && freeHorse(x1, y1, x2, y2);
-        break;
     case -5: //馬
         legal = horsestep(x1, y1, x2, y2) && freeHorse(x1, y1, x2, y2);
         break;
     case 6: //炮
-        legal = straight(x1, y1, x2, y2) && cannonStep(x1, y1, x2, y2);
-        break;
     case -6: //包
         legal = straight(x1, y1, x2, y2) && cannonStep(x1, y1, x2, y2);
         break;
