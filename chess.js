@@ -5,6 +5,7 @@ var C, X1, Y1, Mdx, Mdy;
 var Fa, Fb;     //迷霧可視
 var FFa, FFb;   //攻擊可視
 var FogAlpha = 1;
+var Free = false;
 
 function init()
 {
@@ -57,6 +58,7 @@ function init()
     initChess("a74", 7, 6, 6);//兵
     initChess("a75", 7, 8, 6);//兵
 
+    initChess("b1", -1, 4, 0);//將
     initChess("b4", -4, 8, 0);//車
     initChess("b5", -5, 7, 0);//馬
     initChess("b3", -3, 6, 0);//象
@@ -73,40 +75,6 @@ function init()
     initChess("b73", -7, 4, 3);//卒
     initChess("b74", -7, 2, 3);//卒
     initChess("b75", -7, 0, 3);//卒
-
-    initMirrorChess("a4x", 0, 9);//?
-    initMirrorChess("a5x", 1, 9);//傌
-    initMirrorChess("a3x", 2, 9);//相
-    initMirrorChess("a2x", 3, 9);//仕
-    initMirrorChess("a1x", 4, 9);//帥
-    initMirrorChess("a22x", 5, 9);//仕
-    initMirrorChess("a33x", 6, 9);//相
-    initMirrorChess("a55x", 7, 9);//傌
-    initMirrorChess("a44x", 8, 9);//?
-    initMirrorChess("a6x", 1, 7);//炮
-    initMirrorChess("a66x", 7, 7);//炮
-    initMirrorChess("a71x", 0, 6);//兵
-    initMirrorChess("a72x", 2, 6);//兵
-    initMirrorChess("a73x", 4, 6);//兵
-    initMirrorChess("a74x", 6, 6);//兵
-    initMirrorChess("a75x", 8, 6);//兵
-
-    initMirrorChess("b4x", 8, 0);//車
-    initMirrorChess("b5x", 7, 0);//馬
-    initMirrorChess("b3x", 6, 0);//象
-    initMirrorChess("b2x", 5, 0);//士
-    initMirrorChess("b1x", 4, 0);//將
-    initMirrorChess("b22x", 3, 0);//士
-    initMirrorChess("b33x", 2, 0);//象
-    initMirrorChess("b55x", 1, 0);//馬
-    initMirrorChess("b44x", 0, 0);//車
-    initMirrorChess("b6x", 7, 2);//包
-    initMirrorChess("b66x", 1, 2);//包
-    initMirrorChess("b71x", 8, 3);//卒
-    initMirrorChess("b72x", 6, 3);//卒
-    initMirrorChess("b73x", 4, 3);//卒
-    initMirrorChess("b74x", 2, 3);//卒
-    initMirrorChess("b75x", 0, 3);//卒
 
     refreshFog();
 }
@@ -160,8 +128,7 @@ function initChess(id, k, x, y)
     newDiv.onmousedown = md;
     newDiv.onmousemove = mv;
 
-    if ((id.substr(0, 1) == "a" && id.substr(-1, 1) != "x") ||
-        (id.substr(0, 1) == "b" && id.substr(-1, 1) == "x"))
+    if (id.substr(0, 1) == "a")
     {
         newDiv.style.left = 34 + x * 64 + "px";
         newDiv.style.top = 34 + y * 64 + "px";
@@ -179,6 +146,34 @@ function initChess(id, k, x, y)
     }
 
     chessIn(newDiv, k, x, y);
+
+    var newDivMirror = document.createElement("div");
+
+    newDivMirror.id = id + "x";
+    newDivMirror.style.position = "absolute";
+    newDivMirror.style.zIndex = 1;
+    newDivMirror.style.width = "60px";
+    newDivMirror.style.height = "60px";
+    newDivMirror.style.backgroundImage = "url(images/" + id.substr(0, 2) + ".png)";
+    newDivMirror.style.backgroundRepeat = "no-repeat";
+
+    if (id.substr(0, 1) == "a")
+    {
+        newDivMirror.style.left = 34 + (8 - x) * 64 + "px";
+        newDivMirror.style.top = 34 + (9 - y) * 64 + "px";
+
+        var board = document.getElementById("mirrorBoard");
+        board.appendChild(newDivMirror);
+    }
+    else
+    {
+        newDivMirror.style.left = 34 + x * 64 + "px";
+        newDivMirror.style.top = 34 + y * 64 + "px";
+
+        var board = document.getElementById("board");
+        board.appendChild(newDivMirror);
+    }
+
 }
 
 function chessIn(c, k, x, y)
@@ -197,37 +192,6 @@ function chessOut(c, k, x, y)
     A[x][y] = 0;
     Q[x][y] = "";
     updateChessVisible(x, y, true);
-}
-
-function initMirrorChess(id, x, y)
-{
-    var newDiv = document.createElement("div");
-
-    newDiv.id = id;
-    newDiv.style.position = "absolute";
-    newDiv.style.zIndex = 1;
-    newDiv.style.width = "60px";
-    newDiv.style.height = "60px";
-    newDiv.style.backgroundImage = "url(images/" + id.substr(0, 2) + ".png)";
-    newDiv.style.backgroundRepeat = "no-repeat";
-
-    if ((id.substr(0, 1) == "a" && id.substr(-1, 1) != "x") ||
-        (id.substr(0, 1) == "b" && id.substr(-1, 1) == "x"))
-    {
-        newDiv.style.left = 34 + x * 64 + "px";
-        newDiv.style.top = 34 + y * 64 + "px";
-
-        var board = document.getElementById("board");
-        board.appendChild(newDiv);
-    }
-    else
-    {
-        newDiv.style.left = 34 + (8 - x) * 64 + "px";
-        newDiv.style.top = 34 + (9 - y) * 64 + "px";
-
-        var board = document.getElementById("mirrorBoard");
-        board.appendChild(newDiv);
-    }
 }
 
 function initFogA()
@@ -374,6 +338,7 @@ function updateChessVisible(x, y, open)
     refreshHorseVisible(x, y, open);
     refreshElephantVisible(x, y, open);
     refreshCannonAndCarVisible(x, y, open);
+    refreshKingVisible(open);
 }
 
 function refreshHorseVisible(x, y, open)
@@ -438,6 +403,25 @@ function refreshCannonAndCarVisible(x, y, open)
     {
         refreshChessVisible(4, x, j, open);
         refreshChessVisible(6, x, j, open);
+    }
+}
+
+function refreshKingVisible(open)
+{
+    var kingA = document.getElementById("a1");
+    if (kingA)
+    {
+        var x = p2g(kingA.style.posLeft);
+        var y = p2g(kingA.style.posTop);
+        refreshChessVisible(1, x, y, open);
+    }
+
+    var kingB = document.getElementById("b1");
+    if (kingB)
+    {
+        var x = p2g(kingB.style.posLeft);
+        var y = p2g(kingB.style.posTop);
+        refreshChessVisible(1, 8 - x, 9 - y, open);
     }
 }
 
@@ -512,7 +496,7 @@ function md(event)
     var w = C.id.substr(0, 1); //取得代表黑或紅方的關鍵字
 
     //未輪到正確下棋方時跳出副程式
-    if (w != Turn)
+    if (w != Turn && !Free)
     {
         return;
     }
@@ -691,46 +675,55 @@ function canAttackPalace(c, x, y)
     return false;
 }
 
+//宮在攻擊範圍內
 function canAttack(c, x1, y1, x2, y2)
 {
-    var w = c.id.substr(0, 1);
     var k = A[x1][y1];
 
-    var legal = false;
     switch (k)
     {
-    case 4: //俥
-    case -4: //車
-        legal = straight(x1, y1, x2, y2) && between(x1, y1, x2, y2) == 0;
-        break;
-    case 5: //傌
-    case -5: //馬
-        legal = horsestep(x1, y1, x2, y2) && freeHorse(x1, y1, x2, y2);
-        break;
+    case 1: //帥
+    case -1: //將
+        return straight(x1, y1, x2, y2) && (between(x1, y1, x2, y2) == 0);
+
     case 6: //炮
     case -6: //包
-        legal = straight(x1, y1, x2, y2) && cannonStep(x1, y1, x2, y2);
-        break;
-    case 7: //兵
-    case -7: //卒
-        legal = onestep(x1, y1, x2, y2) && soldier(-1, y1, y2);
-        break;
+        return straight(x1, y1, x2, y2) && (between(x1, y1, x2, y2) == 1);
     }
 
-    return legal;
+    return canMove(c, x1, y1, x2, y2);
 }
 
 function canVisible(c, x1, y1, x2, y2)
 {
-    var w = c.id.substr(0, 1);
     var k = A[x1][y1];
 
     var legal = false;
     switch (k)
     {
+    case 1: //帥
+    case -1: //將
+        legal = straight(x1, y1, x2, y2);
+        break;
+    case 2: //仕
+    case -2: //士
+        legal = dgn(1, x1, y1, x2, y2) || step(1, x1, y1, x2, y2);
+        break;
+    case 3: //相
+    case -3: //象
+        legal = dgn(1, x1, y1, x2, y2) ||dgn(2, x1, y1, x2, y2) || step(1, x1, y1, x2, y2) || step(2, x1, y1, x2, y2);
+        break;
+    case 5: //傌
+    case -5: //馬
+        legal = (horsestep(x1, y1, x2, y2) && freeHorse(x1, y1, x2, y2)) || step(1, x1, y1, x2, y2) || (step(2, x1, y1, x2, y2) && between(x1, y1, x2, y2) == 0);
+        break;
     case 6: //炮
     case -6: //包
-        legal = straight(x1, y1, x2, y2) && cannonStep(x1, y1, x2, y2);
+        legal = (straight(x1, y1, x2, y2) && between(x1, y1, x2, y2) < 2);
+        break;
+    case 7: //兵
+    case -7: //卒
+        legal = step(1, x1, y1, x2, y2) || dgn(1, x1, y1, x2, y2);
         break;
     }
 
@@ -753,7 +746,7 @@ function canMove(c, x1, y1, x2, y2)
     {
     case 1: //帥
     case -1: //將
-        legal = onestep(x1, y1, x2, y2) && inpalace(w, x2, y2);
+        legal = step(1, x1, y1, x2, y2) && inpalace(w, x2, y2);
         break;
     case 2: //仕
     case -2: //士
@@ -778,10 +771,10 @@ function canMove(c, x1, y1, x2, y2)
         legal = straight(x1, y1, x2, y2) && cannonStep(x1, y1, x2, y2);
         break;
     case 7: //兵
-        legal = onestep(x1, y1, x2, y2) && soldier(1, y1, y2);
+        legal = step(1, x1, y1, x2, y2) && soldier(1, y1, y2);
         break;
     case -7: //卒
-        legal = onestep(x1, y1, x2, y2) && soldier(-1, y1, y2);
+        legal = step(1, x1, y1, x2, y2) && soldier(-1, y1, y2);
         break;
     }
 
@@ -823,10 +816,10 @@ function occupy(k, x, y)
     return false;
 }
 
-//移動一格
-function onestep(x1, y1, x2, y2)
+function step(s, x1, y1, x2, y2)
 {
-    if (Math.abs(x1 - x2) + Math.abs(y1 - y2) == 1)
+    if ((x1 == x2 || y1 == y2) &&
+        (Math.abs(x1 - x2) + Math.abs(y1 - y2) == s))
     {
         return true;
     }
