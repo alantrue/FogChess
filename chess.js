@@ -4,6 +4,7 @@ var A, Q;
 var C, X1, Y1, Mdx, Mdy;
 var Fa, Fb;     //迷霧可視
 var FFa, FFb;   //攻擊可視
+var Ta, Tb;
 var FogAlpha = 1;
 var Free = false;
 
@@ -15,6 +16,8 @@ function init()
     FFa = new Array(9);
     Fb = new Array(9);
     FFb = new Array(9);
+    Ta = new Array(9);
+    Tb = new Array(9);
 
     for (var i = 0; i < 9; ++i)
     {
@@ -24,6 +27,8 @@ function init()
         FFa[i] = new Array(10);
         Fb[i] = new Array(10);
         FFb[i] = new Array(10);
+        Ta[i] = new Array(10);
+        Tb[i] = new Array(10);
         for (var j = 0; j < 10; ++j)
         {
             A[i][j] = 0; //棋種代碼預設值
@@ -32,7 +37,8 @@ function init()
             FFa[i][j] = new Array;
             Fb[i][j] = new Array;
             FFb[i][j] = new Array;
-
+            Ta[i][j] = new Array;
+            Tb[i][j] = new Array;
         }
     }
 
@@ -58,7 +64,6 @@ function init()
     initChess("a74", 7, 6, 6);//兵
     initChess("a75", 7, 8, 6);//兵
 
-    initChess("b1", -1, 4, 0);//將
     initChess("b4", -4, 8, 0);//車
     initChess("b5", -5, 7, 0);//馬
     initChess("b3", -3, 6, 0);//象
@@ -77,6 +82,7 @@ function init()
     initChess("b75", -7, 0, 3);//卒
 
     refreshFog();
+    refreshTip();
 }
 
 function initBoard()
@@ -200,24 +206,12 @@ function initFogA()
     {
         for (var j = 0; j < 10; ++j)
         {
-            var newDiv = document.createElement("div");
-
-            newDiv.id = "fa" + i.toString() + j.toString();
-            newDiv.style.position = "absolute";
-            newDiv.style.zIndex = 2;
-            newDiv.style.width = "64px";
-            newDiv.style.height = "64px";
-            newDiv.style.backgroundImage = "url(images/fog.png)";
-            newDiv.style.backgroundRepeat = "no-repeat";
-            newDiv.style.opacity = FogAlpha;
-            newDiv.style.visibility = "hidden";
-            newDiv.onmousemove = mv;
-
-            newDiv.style.left = 34 + i * 64 + "px";
-            newDiv.style.top = 34 + j * 64 + "px";
+            var fog = createElement("fa", i, j, 2, "fog.png");
+            var tip = createElement("ta", i, j, 1, "tip.png");
 
             var board = document.getElementById("board");
-            board.appendChild(newDiv);
+            board.appendChild(fog);
+            board.appendChild(tip);
         }
     }
 }
@@ -228,26 +222,43 @@ function initFogB()
     {
         for (var j = 0; j < 10; ++j)
         {
-            var newDiv = document.createElement("div");
-
-            newDiv.id = "fb" + i.toString() + j.toString();
-            newDiv.style.position = "absolute";
-            newDiv.style.zIndex = 2;
-            newDiv.style.width = "64px";
-            newDiv.style.height = "64px";
-            newDiv.style.backgroundImage = "url(images/fog.png)";
-            newDiv.style.backgroundRepeat = "no-repeat";
-            newDiv.style.opacity = FogAlpha;
-            newDiv.style.visibility = "hidden";
-            newDiv.onmousemove = mv;
-
-            newDiv.style.left = 34 + (8 - i) * 64 + "px";
-            newDiv.style.top = 34 + (9 - j) * 64 + "px";
+            var fog = createElement("fb", i, j, 2, "fog.png");
+            var tip = createElement("tb", i, j, 1, "tip.png");
 
             var board = document.getElementById("mirrorBoard");
-            board.appendChild(newDiv);
+            board.appendChild(fog);
+            board.appendChild(tip)
         }
     }
+}
+
+function createElement(w, x, y, z, file)
+{
+    var newDiv = document.createElement("div");
+
+    newDiv.id = w + x.toString() + y.toString();
+    newDiv.style.position = "absolute";
+    newDiv.style.zIndex = z;
+    newDiv.style.width = "64px";
+    newDiv.style.height = "64px";
+    newDiv.style.backgroundImage = "url(images/" + file + ")";
+    newDiv.style.backgroundRepeat = "no-repeat";
+    newDiv.style.opacity = FogAlpha;
+    newDiv.style.visibility = "hidden";
+    newDiv.onmousemove = mv;
+
+    if (w.substr(1, 1) == "a")
+    {
+        newDiv.style.left = 34 + x * 64 + "px";
+        newDiv.style.top = 34 + y * 64 + "px";
+    }
+    else
+    {
+        newDiv.style.left = 34 + (8 - x) * 64 + "px";
+        newDiv.style.top = 34 + (9 - y) * 64 + "px";
+    }
+
+    return newDiv;
 }
 
 function refreshFog()
@@ -283,10 +294,44 @@ function refreshFog()
     }
 }
 
+function refreshTip()
+{
+    for (var i = 0; i < 9; ++i)
+    {
+        for (var j = 0; j < 10; ++j)
+        {
+            if (Ta[i][j].length > 0)
+            {
+                showTip("a", i, j);
+            }
+            else
+            {
+                hideTip("a", i, j);
+            }
+        }
+    }
+
+    for (var i = 0; i < 9; ++i)
+    {
+        for (var j = 0; j < 10; ++j)
+        {
+            if (Tb[i][j].length > 0)
+            {
+                showTip("b", i, j);
+            }
+            else
+            {
+                hideTip("b", i, j);
+            }
+        }
+    }
+}
+
 function openChessVisible(c, x, y)
 {
     var f = (c.id.substr(0, 1) == "a" ? Fa : Fb);
     var ff = (c.id.substr(0, 1) == "a" ? FFb : FFa);
+    var t = (c.id.substr(0, 1) == "a" ? Tb : Ta);
 
     for (var i = 0; i < 9; ++i)
     {
@@ -307,12 +352,18 @@ function openChessVisible(c, x, y)
     {
         addVisible(ff[x][y], c.id);
     }
+
+    if (canAttackKing(c, x, y))
+    {
+        addVisible(t[x][y], c.id);
+    }
 }
 
 function closeChessVisible(c, x, y)
 {
     var f = (c.id.substr(0, 1) == "a" ? Fa : Fb);
     var ff = (c.id.substr(0, 1) == "a" ? FFb : FFa);
+    var t = (c.id.substr(0, 1) == "a" ? Tb : Ta);
 
     for (var i = 0; i < 9; ++i)
     {
@@ -330,11 +381,17 @@ function closeChessVisible(c, x, y)
     {
         removeVisible(ff[x][y], c.id);
     }
+
+    if (canAttackKing(c, x, y))
+    {
+        removeVisible(t[x][y], c.id);
+    }
 }
 
 function updateChessVisible(x, y, open)
 {
-    //x, y為中心, X象+馬, 直橫車炮
+    //x, y為中心, X字"象", 十字"馬兵", 直橫"車炮", "王"
+    refreshSoldierVisible(x, y, open);
     refreshHorseVisible(x, y, open);
     refreshElephantVisible(x, y, open);
     refreshCannonAndCarVisible(x, y, open);
@@ -408,20 +465,41 @@ function refreshCannonAndCarVisible(x, y, open)
 
 function refreshKingVisible(open)
 {
-    var kingA = document.getElementById("a1");
-    if (kingA)
+    var result = findChessPos("a1");
+    if (result[0])
     {
-        var x = p2g(kingA.style.posLeft);
-        var y = p2g(kingA.style.posTop);
-        refreshChessVisible(1, x, y, open);
+        refreshChessVisible(1, result[1], result[2], open);
     }
 
-    var kingB = document.getElementById("b1");
-    if (kingB)
+    var result = findChessPos("b1");
+    if (result[0])
     {
-        var x = p2g(kingB.style.posLeft);
-        var y = p2g(kingB.style.posTop);
-        refreshChessVisible(1, 8 - x, 9 - y, open);
+        refreshChessVisible(1, result[1], result[2], open);
+    }
+}
+
+function refreshSoldierVisible(x, y, open)
+{
+    var soldierPos =
+        [
+            [x - 1, y],
+            [x + 1, y],
+            [x, y - 1],
+            [x, y + 1]
+        ];
+
+    for (var i = 0; i < soldierPos.length; ++i)
+    {
+        var pos = soldierPos[i];
+        var x = pos[0];
+        var y = pos[1];
+        if (x < 0 || x > 8 ||
+            y < 0 || y > 9)
+        {
+            continue;
+        }
+
+        refreshChessVisible(7, x, y, open);
     }
 }
 
@@ -452,6 +530,16 @@ function showFog(w, x, y)
 function hideFog(w, x, y)
 {
     document.getElementById("f" + w + x + y).style.visibility = "hidden";
+}
+
+function showTip(w, x, y)
+{
+    document.getElementById("t" + w + x + y).style.visibility = "visible";
+}
+
+function hideTip(w, x, y)
+{
+    document.getElementById("t" + w + x + y).style.visibility = "hidden";
 }
 
 function addVisible(f, id)
@@ -565,6 +653,9 @@ function chess(C)
     var x2 = p2g(posX); //取得棋子移至的棋格座標X
     var y2 = p2g(posY); //取得棋子移至的棋格座標Y
 
+    C.style.posLeft = g2p(X1); //跳回原處x1
+    C.style.posTop = g2p(Y1); //跳回原處y1
+
     var w = C.id.substr(0, 1); //取得代表黑或紅方的關鍵字
 
     if (w == "b")
@@ -577,13 +668,6 @@ function chess(C)
 
     if (!canMove(C, X1, Y1, x2, y2) || inFog(w, x2, y2))
     {
-        if (w == "b")
-        {
-            X1 = 8 - X1;
-            Y1 = 9 - Y1;
-        }
-        C.style.posLeft = g2p(X1); //跳回原處x1
-        C.style.posTop = g2p(Y1); //跳回原處y1
         return;
     }
 
@@ -642,8 +726,22 @@ function chess(C)
     }
 
     refreshFog();
+    refreshTip();
 
     C = null; //清除選定棋子物件
+}
+
+function canAttackKing(c, x, y)
+{
+    var w = ((c.id.substr(0, 1) == "a") ? "b1" : "a1");
+
+    var result = findChessPos(w);
+    if (result[0])
+    {
+        return canMove(c, x, y, result[1], result[2]);
+    }
+
+    return false;
 }
 
 function canAttackPalace(c, x, y)
@@ -1000,6 +1098,22 @@ function soldier(k, y1, y2)
         }
         return true;
     }
+}
+
+function findChessPos(id)
+{
+    for (var i = 0; i < 9; ++i)
+    {
+        for (var j = 0; j < 10; ++j)
+        {
+            if (Q[i][j] == id)
+            {
+                return [true, i, j];
+            }
+        }
+    }
+
+    return [false];
 }
 
 //重玩
