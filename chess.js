@@ -1,9 +1,13 @@
-function Chess(id, k, hp, atk, d, dd, board)
+function Chess(id, k, hp, atk, d, dd, h, hh, a, aa, board)
 {
     this.id = id;
     this.k = k;
     this.hp = hp;
+    this.h = h;
+    this.hh = hh;
     this.atk = atk;
+    this.a = a;
+    this.aa = aa;
     this.d = d;
     this.dd = dd;
     this.x = 0;
@@ -21,6 +25,9 @@ Chess.prototype.attack = function(c)
     {
         c.hp = 0;
     }
+
+    c.h.innerHTML = c.hp;
+    c.hh.innerHTML = c.hp;
 };
 
 Chess.prototype.isDie = function()
@@ -46,15 +53,27 @@ Chess.prototype.position = function(x, y)
 
     this.d.style.posLeft = g2p(x);
     this.d.style.posTop = g2p(y);
+    this.h.style.posLeft = g2p(x);
+    this.h.style.posTop = g2p(y);
+    this.a.style.posLeft = g2p(x);
+    this.a.style.posTop = g2p(y) + 34;
 
     this.dd.style.posLeft = g2p(8 - x);
     this.dd.style.posTop = g2p(9 - y);
+    this.hh.style.posLeft = g2p(8 - x);
+    this.hh.style.posTop = g2p(9 - y);
+    this.aa.style.posLeft = g2p(8 - x);
+    this.aa.style.posTop = g2p(9 - y) + 34;
 };
 
 Chess.prototype.visible = function(v)
 {
     this.d.style.visibility = (v ? "visible" : "hidden");
     this.dd.style.visibility = (v ? "visible" : "hidden");
+    this.h.style.visibility = (v ? "visible" : "hidden");
+    this.hh.style.visibility = (v ? "visible" : "hidden");
+    this.a.style.visibility = (v ? "visible" : "hidden");
+    this.aa.style.visibility = (v ? "visible" : "hidden");
 };
 
 Chess.prototype.update = function()

@@ -1,5 +1,5 @@
 var BoardInfo;
-var C, X1, Y1, Mdx, Mdy;
+var C, X1, Y1, Mdx, Mdy, Hp, Atk;
 var Drag = false;
 var Turn = "a";
 
@@ -85,8 +85,12 @@ function initChess(id, k, x, y, hp, atk)
     var d = createElement(id, x, y, 1, id.substr(0, 2) + ".png");
     d.onmousedown = mouseDown;
     d.onmousemove = mouseMove;
+    var h = createHpText(id, x, y, hp);
+    var a = createAtkText(id, x, y, atk);
 
     var dd = createElement(id + "x", x, y, 1, id.substr(0, 2) + ".png");
+    var hh = createHpText(id + "x", x, y, hp);
+    var aa = createAtkText(id + "x", x, y, atk);
 
     var board = document.getElementById("board");
     var mirrorBoard = document.getElementById("mirrorBoard");
@@ -94,15 +98,23 @@ function initChess(id, k, x, y, hp, atk)
     if (id.substr(0, 1) == "a")
     {
         board.appendChild(d);
+        board.appendChild(h);
+        board.appendChild(a);
         mirrorBoard.appendChild(dd);
+        mirrorBoard.appendChild(hh);
+        mirrorBoard.appendChild(aa);
     }
     else
     {
         board.appendChild(dd);
+        board.appendChild(hh);
+        board.appendChild(aa);
         mirrorBoard.appendChild(d);
+        mirrorBoard.appendChild(h);
+        mirrorBoard.appendChild(a);
     }
 
-    var c = new Chess(id, k, hp, atk, d, dd, BoardInfo);
+    var c = new Chess(id, k, hp, atk, d, dd, h, hh, a, aa, BoardInfo);
     BoardInfo.chessIn(c, x, y);
 }
 
@@ -170,10 +182,36 @@ function createElement(id, x, y, z, file)
     return newDiv;
 }
 
+function createHpText(id, x, y, hp)
+{
+    var newDiv = document.createElement("div");
+    newDiv.id = "h" + id;
+    newDiv.style.position = "absolute";
+    newDiv.style.zIndex = 2;
+    newDiv.innerHTML = hp;
+
+    return newDiv;
+}
+
+function createAtkText(id, x, y, atk)
+{
+    var newDiv = document.createElement("div");
+    newDiv.id = "a" + id;
+    newDiv.style.position = "absolute";
+    newDiv.style.zIndex = 2;
+    newDiv.innerHTML = atk;
+
+    return newDiv;
+}
+
 function mouseDown(event)
 {
     C = event.srcElement; //取得觸發事件的物件(棋子)
     var f = C.id.substr(0, 1); //取得代表黑或紅方的關鍵字
+
+    Hp = document.getElementById("h" + C.id);
+    Atk = document.getElementById("a" + C.id);
+
 
     //未輪到正確下棋方時跳出副程式
     if (f != Turn && !Free)
@@ -235,6 +273,10 @@ function mouseMove(event)
     {
         C.style.posLeft += event.offsetX - Mdx; //X方向移動
         C.style.posTop += event.offsetY - Mdy; //Y方向移動
+        Hp.style.posLeft += event.offsetX - Mdx; //X方向移動
+        Hp.style.posTop += event.offsetY - Mdy; //Y方向移動
+        Atk.style.posLeft += event.offsetX - Mdx; //X方向移動
+        Atk.style.posTop += event.offsetY - Mdy; //Y方向移動
     }
 }
 
@@ -266,6 +308,10 @@ function endDrag()
     C.style.zIndex = 1;
     C.style.posLeft = g2p(X1);
     C.style.posTop = g2p(Y1);
+    Hp.style.posLeft = g2p(X1);
+    Hp.style.posTop = g2p(Y1);
+    Atk.style.posLeft = g2p(X1);
+    Atk.style.posTop = g2p(Y1) + 34;
 }
 
 //棋格到像素座標
