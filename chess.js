@@ -433,5 +433,5 @@ Chess.prototype.freeElephant = function(x, y)
     var xx = Math.round((this.x + x) / 2);
     var yy = Math.round((this.y + y) / 2);
 
-    return (this.board.slots[xx][yy].chess = null);
+    return (this.board.slots[xx][yy].chess == null);
 };
