@@ -1,51 +1,124 @@
 var Drag = false;
 var Turn = "a";
-var A, Q;
+var BoardInfo;
 var C, X1, Y1, Mdx, Mdy;
-var Fa, Fb;     //迷霧可視
-var FFa, FFb;   //攻擊可視
-var Ta, Tb;
 var FogAlpha = 1;
-var Free = false;
+var Free = true;
+
+function Chess(id, k, d, dd, board)
+{
+    this.id = id;
+    this.k = k;
+    this.d = d;
+    this.dd = dd;
+    this.x = 0;
+    this.y = 0;
+    this.board = board;
+}
+Chess.prototype.faction = function()
+{
+    return this.id.substr(0, 1);
+}
+Chess.prototype.setPos = function(x, y)
+{
+    this.x = x;
+    this.y = y;
+
+    if (this.faction() == "b")
+    {
+        x = 8 - x;
+        y = 9 - y;
+    }
+
+    this.d.style.posLeft = g2p(x);
+    this.d.style.posTop = g2p(y);
+
+    this.dd.style.posLeft = g2p(8 - x);
+    this.dd.style.posTop = g2p(9 - y);
+}
+Chess.prototype.visible = function(v)
+{
+    this.d.style.visibility = (v ? "visible" : "hidden");
+    this.dd.style.visibility = (v ? "visible" : "hidden");
+}
+Chess.prototype.update = function(board)
+{
+    for (var i = 0; i < 9; ++i)
+    {
+        for (var j = 0; j < 10; ++j)
+        {
+            var f = (this.faction() == "a" ? board[i][j].fogA : board[i][j].fogB);
+
+            if ((this.x == i && this.y == j))
+            {
+                f.visible(false);
+            }
+            else if (canVisible(this, i, j))
+            {
+                f.visible(false);
+            }
+        }
+    }
+
+    if (canAttackPalace(this))
+    {
+        var f = (this.faction() == "a" ? board[this.x][this.y].fogB : board[this.x][this.y].fogA);
+        f.visible(false);
+    }
+
+    if (canAttackKing(this))
+    {
+        var t = (this.faction() == "a" ? board[this.x][this.y].tipB : board[this.x][this.y].tipA);
+        t.visible(true);
+    }
+}
+
+function Fog(d)
+{
+    this.d = d;
+}
+Fog.prototype.visible = function (v)
+{
+    this.d.style.visibility = (v ? "visible" : "hidden");
+}
+
+function Tip(d)
+{
+    this.d = d;
+}
+
+Tip.prototype.visible = function (v)
+{
+    this.d.style.visibility = (v ? "visible" : "hidden");
+}
+
+function Slot(x, y)
+{
+    this.x = x;
+    this.y = y;
+    this.chess = null;
+    this.fogA = null;
+    this.fogB = null;
+    this.tipA = null;
+    this.tipB = null;
+};
 
 function init()
 {
-    A = new Array(9); //宣告棋種屬性分布的陣列
-    Q = new Array(9); //宣告棋子ID分布的陣列
-    Fa = new Array(9);
-    FFa = new Array(9);
-    Fb = new Array(9);
-    FFb = new Array(9);
-    Ta = new Array(9);
-    Tb = new Array(9);
+    BoardInfo = new Array(9);
 
     for (var i = 0; i < 9; ++i)
     {
-        A[i] = new Array(10); //宣告棋種次級陣列
-        Q[i] = new Array(10); //宣告ID次級陣列
-        Fa[i] = new Array(10);
-        FFa[i] = new Array(10);
-        Fb[i] = new Array(10);
-        FFb[i] = new Array(10);
-        Ta[i] = new Array(10);
-        Tb[i] = new Array(10);
+        BoardInfo[i] = new Array(10);
+
         for (var j = 0; j < 10; ++j)
         {
-            A[i][j] = 0; //棋種代碼預設值
-            Q[i][j] = ""; //ID預設值→空字串
-            Fa[i][j] = new Array;
-            FFa[i][j] = new Array;
-            Fb[i][j] = new Array;
-            FFb[i][j] = new Array;
-            Ta[i][j] = new Array;
-            Tb[i][j] = new Array;
+            BoardInfo[i][j] = new Slot(i, j);
         }
     }
 
     initBoard();
-    initMirrorBoard();
-    initFogA();
-    initFogB();
+    initFogAndTip();
 
     initChess("a4", 4, 0, 9);//俥
     initChess("a5", 5, 1, 9);//傌
@@ -81,162 +154,136 @@ function init()
     initChess("b74", -7, 2, 3);//卒
     initChess("b75", -7, 0, 3);//卒
 
-    refreshFog();
-    refreshTip();
+    updateBoard();
 }
 
 function initBoard()
 {
-    var newDiv = document.createElement("div");
+    var board = document.createElement("div");
+    board.id = "board";
+    board.style.position = "absolute";
+    board.style.zIndex = 0;
+    board.style.width = "642px";
+    board.style.height = "704px";
+    board.style.backgroundImage = "url(images/Z.png)";
+    board.style.backgroundRepeat = "no-repeat";
+    board.style.left = 0 + "px";
+    board.style.top = 0 + "px";
+    board.onmouseover = mout;
 
-    newDiv.id = "board";
-    newDiv.style.position = "absolute";
-    newDiv.style.zIndex = 0;
-    newDiv.style.width = "642px";
-    newDiv.style.height = "704px";
-    newDiv.style.backgroundImage = "url(images/Z.png)";
-    newDiv.style.backgroundRepeat = "no-repeat";
-    newDiv.style.left = 0 + "px";
-    newDiv.style.top = 0 + "px";
-    newDiv.onmouseover = mout;
+    var mirrorBoard = document.createElement("div");
+    mirrorBoard.id = "mirrorBoard";
+    mirrorBoard.style.position = "absolute";
+    mirrorBoard.style.zIndex = 0;
+    mirrorBoard.style.width = "642px";
+    mirrorBoard.style.height = "704px";
+    mirrorBoard.style.backgroundImage = "url(images/Z.png)";
+    mirrorBoard.style.backgroundRepeat = "no-repeat";
+    mirrorBoard.style.left = 730 + "px";
+    mirrorBoard.style.top = 0 + "px";
+    mirrorBoard.onmouseover = mout;
 
-    document.body.appendChild(newDiv);
-}
-
-function initMirrorBoard()
-{
-    var newDiv = document.createElement("div");
-
-    newDiv.id = "mirrorBoard";
-    newDiv.style.position = "absolute";
-    newDiv.style.zIndex = 0;
-    newDiv.style.width = "642px";
-    newDiv.style.height = "704px";
-    newDiv.style.backgroundImage = "url(images/Z.png)";
-    newDiv.style.backgroundRepeat = "no-repeat";
-    newDiv.style.left = 730 + "px";
-    newDiv.style.top = 0 + "px";
-    newDiv.onmouseover = mout;
-
-    document.body.appendChild(newDiv);
+    document.body.appendChild(board);
+    document.body.appendChild(mirrorBoard);
 }
 
 function initChess(id, k, x, y)
 {
-    var newDiv = document.createElement("div");
-    newDiv.id = id;
-    newDiv.style.position = "absolute";
-    newDiv.style.zIndex = 1;
-    newDiv.style.width = "60px";
-    newDiv.style.height = "60px";
-    newDiv.style.backgroundImage = "url(images/" + id.substr(0, 2) + ".png)";
-    newDiv.style.backgroundRepeat = "no-repeat";
-    newDiv.onmousedown = md;
-    newDiv.onmousemove = mv;
+    var d = createElement(id, x, y, 1, id.substr(0, 2) + ".png");
+    d.onmousedown = md;
+    d.onmousemove = mv;
+
+    var dd = createElement(id + "x", x, y, 1, id.substr(0, 2) + ".png");
 
     if (id.substr(0, 1) == "a")
     {
-        newDiv.style.left = 34 + x * 64 + "px";
-        newDiv.style.top = 34 + y * 64 + "px";
-
         var board = document.getElementById("board");
-        board.appendChild(newDiv);
+        board.appendChild(d);
+
+        var mirrorBoard = document.getElementById("mirrorBoard");
+        mirrorBoard.appendChild(dd);
     }
     else
     {
-        newDiv.style.left = 34 + (8 - x) * 64 + "px";
-        newDiv.style.top = 34 + (9 - y) * 64 + "px";
-
-        var board = document.getElementById("mirrorBoard");
-        board.appendChild(newDiv);
-    }
-
-    chessIn(newDiv, k, x, y);
-
-    var newDivMirror = document.createElement("div");
-
-    newDivMirror.id = id + "x";
-    newDivMirror.style.position = "absolute";
-    newDivMirror.style.zIndex = 1;
-    newDivMirror.style.width = "60px";
-    newDivMirror.style.height = "60px";
-    newDivMirror.style.backgroundImage = "url(images/" + id.substr(0, 2) + ".png)";
-    newDivMirror.style.backgroundRepeat = "no-repeat";
-
-    if (id.substr(0, 1) == "a")
-    {
-        newDivMirror.style.left = 34 + (8 - x) * 64 + "px";
-        newDivMirror.style.top = 34 + (9 - y) * 64 + "px";
-
-        var board = document.getElementById("mirrorBoard");
-        board.appendChild(newDivMirror);
-    }
-    else
-    {
-        newDivMirror.style.left = 34 + x * 64 + "px";
-        newDivMirror.style.top = 34 + y * 64 + "px";
-
         var board = document.getElementById("board");
-        board.appendChild(newDivMirror);
+        board.appendChild(dd);
+
+        var mirrorBoard = document.getElementById("mirrorBoard");
+        mirrorBoard.appendChild(d);
     }
 
+    var c = new Chess(id, k, d, dd);
+
+    chessIn(c, x, y);
 }
 
-function chessIn(c, k, x, y)
+function chessIn(c, x, y)
 {
-    updateChessVisible(x, y, false);
-    A[x][y] = k;
-    Q[x][y] = c.id;
-    openChessVisible(c, x, y);
-    updateChessVisible(x, y, true);
+    BoardInfo[x][y].chess = c;
+
+    c.setPos(x, y);
+    c.visible(true);
 }
 
-function chessOut(c, k, x, y)
+function chessOut(x, y)
 {
-    updateChessVisible(x, y, false);
-    closeChessVisible(c, x, y);
-    A[x][y] = 0;
-    Q[x][y] = "";
-    updateChessVisible(x, y, true);
+    var c = BoardInfo[x][y].chess;
+    c.visible(false);
+
+    BoardInfo[x][y].chess = null;
+
+    //將帥被吃了
+    if (c.id.substr(1, 1) == "1")
+    {
+        reset();
+    }//重玩囉
 }
 
-function initFogA()
+function chessMove(c, x, y)
 {
+    BoardInfo[x][y].chess = c;
+    BoardInfo[c.x][c.y].chess = null;
+
+    c.setPos(x, y);
+}
+
+function initFogAndTip()
+{
+    var board = document.getElementById("board");
+    var mirrorBoard = document.getElementById("mirrorBoard");
+
     for (var i = 0; i < 9; ++i)
     {
         for (var j = 0; j < 10; ++j)
         {
-            var fog = createElement("fa", i, j, 2, "fog.png");
-            var tip = createElement("ta", i, j, 1, "tip.png");
+            var fogA = createElement("fa" + i + j, i, j, 2, "fog.png");
+            fogA.onmousemove = mv;
+            board.appendChild(fogA);
+            BoardInfo[i][j].fogA = new Fog(fogA);
 
-            var board = document.getElementById("board");
-            board.appendChild(fog);
-            board.appendChild(tip);
+            var tipA = createElement("ta" + i + j, i, j, 1, "tip.png");
+            tipA.onmousemove = mv;
+            board.appendChild(tipA);
+            BoardInfo[i][j].tipA = new Tip(tipA);
+
+            var fogB = createElement("fb" + i + j, i, j, 2, "fog.png");
+            fogB.onmousemove = mv;
+            mirrorBoard.appendChild(fogB);
+            BoardInfo[i][j].fogB = new Fog(fogB);
+
+            var tipB = createElement("tb" + i + j, i, j, 1, "tip.png");
+            tipB.onmousemove = mv;
+            mirrorBoard.appendChild(tipB);
+            BoardInfo[i][j].tipB = new Tip(tipB);
         }
     }
 }
 
-function initFogB()
-{
-    for (var i = 0; i < 9; ++i)
-    {
-        for (var j = 0; j < 10; ++j)
-        {
-            var fog = createElement("fb", i, j, 2, "fog.png");
-            var tip = createElement("tb", i, j, 1, "tip.png");
-
-            var board = document.getElementById("mirrorBoard");
-            board.appendChild(fog);
-            board.appendChild(tip)
-        }
-    }
-}
-
-function createElement(w, x, y, z, file)
+function createElement(id, x, y, z, file)
 {
     var newDiv = document.createElement("div");
 
-    newDiv.id = w + x.toString() + y.toString();
+    newDiv.id =id;
     newDiv.style.position = "absolute";
     newDiv.style.zIndex = z;
     newDiv.style.width = "64px";
@@ -245,9 +292,8 @@ function createElement(w, x, y, z, file)
     newDiv.style.backgroundRepeat = "no-repeat";
     newDiv.style.opacity = FogAlpha;
     newDiv.style.visibility = "hidden";
-    newDiv.onmousemove = mv;
 
-    if (w.substr(1, 1) == "a")
+    if (id.substr(1, 1) == "a")
     {
         newDiv.style.left = 34 + x * 64 + "px";
         newDiv.style.top = 34 + y * 64 + "px";
@@ -261,20 +307,16 @@ function createElement(w, x, y, z, file)
     return newDiv;
 }
 
-function refreshFog()
+function updateBoard()
 {
     for (var i = 0; i < 9; ++i)
     {
         for (var j = 0; j < 10; ++j)
         {
-            if (Fa[i][j].length > 0 || FFa[i][j].length > 0)
-            {
-                hideFog("a", i, j);
-            }
-            else
-            {
-                showFog("a", i, j);
-            }
+            BoardInfo[i][j].fogA.visible(true);
+            BoardInfo[i][j].fogB.visible(true);
+            BoardInfo[i][j].tipA.visible(false);
+            BoardInfo[i][j].tipB.visible(false);
         }
     }
 
@@ -282,309 +324,23 @@ function refreshFog()
     {
         for (var j = 0; j < 10; ++j)
         {
-            if (Fb[i][j].length > 0 || FFb[i][j].length > 0)
+            var c = BoardInfo[i][j].chess;
+
+            if (c)
             {
-                hideFog("b", i, j);
-            }
-            else
-            {
-                showFog("b", i, j);
+                c.update(BoardInfo);
             }
         }
     }
-}
-
-function refreshTip()
-{
-    for (var i = 0; i < 9; ++i)
-    {
-        for (var j = 0; j < 10; ++j)
-        {
-            if (Ta[i][j].length > 0)
-            {
-                showTip("a", i, j);
-            }
-            else
-            {
-                hideTip("a", i, j);
-            }
-        }
-    }
-
-    for (var i = 0; i < 9; ++i)
-    {
-        for (var j = 0; j < 10; ++j)
-        {
-            if (Tb[i][j].length > 0)
-            {
-                showTip("b", i, j);
-            }
-            else
-            {
-                hideTip("b", i, j);
-            }
-        }
-    }
-}
-
-function openChessVisible(c, x, y)
-{
-    var f = (c.id.substr(0, 1) == "a" ? Fa : Fb);
-    var ff = (c.id.substr(0, 1) == "a" ? FFb : FFa);
-    var t = (c.id.substr(0, 1) == "a" ? Tb : Ta);
-
-    for (var i = 0; i < 9; ++i)
-    {
-        for (var j = 0; j < 10; ++j)
-        {
-            if ((x == i && y == j))
-            {
-                addVisible(f[i][j], c.id);
-            }
-            else if (canVisible(c, x, y, i, j))
-            {
-                addVisible(f[i][j], c.id);
-            }
-        }
-    }
-
-    if (canAttackPalace(c, x, y))
-    {
-        addVisible(ff[x][y], c.id);
-    }
-
-    if (canAttackKing(c, x, y))
-    {
-        addVisible(t[x][y], c.id);
-    }
-}
-
-function closeChessVisible(c, x, y)
-{
-    var f = (c.id.substr(0, 1) == "a" ? Fa : Fb);
-    var ff = (c.id.substr(0, 1) == "a" ? FFb : FFa);
-    var t = (c.id.substr(0, 1) == "a" ? Tb : Ta);
-
-    for (var i = 0; i < 9; ++i)
-    {
-        for (var j = 0; j < 10; ++j)
-        {
-            if ((x == i && y == j) ||
-                canVisible(c, x, y, i, j))
-            {
-                removeVisible(f[i][j], c.id);
-            }
-        }
-    }
-
-    if (canAttackPalace(c, x, y))
-    {
-        removeVisible(ff[x][y], c.id);
-    }
-
-    if (canAttackKing(c, x, y))
-    {
-        removeVisible(t[x][y], c.id);
-    }
-}
-
-function updateChessVisible(x, y, open)
-{
-    //x, y為中心, X字"象", 十字"馬兵", 直橫"車炮", "王"
-    refreshSoldierVisible(x, y, open);
-    refreshHorseVisible(x, y, open);
-    refreshElephantVisible(x, y, open);
-    refreshCannonAndCarVisible(x, y, open);
-    refreshKingVisible(open);
-}
-
-function refreshHorseVisible(x, y, open)
-{
-    var horsePos =
-    [
-        [x - 1, y],
-        [x + 1, y],
-        [x, y - 1],
-        [x, y + 1]
-    ];
-
-    for (var i = 0; i < horsePos.length; ++i)
-    {
-        var pos = horsePos[i];
-        var x = pos[0];
-        var y = pos[1];
-        if (x < 0 || x > 8 ||
-            y < 0 || y > 9)
-        {
-            continue;
-        }
-
-        refreshChessVisible(5, x, y, open);
-    }
-}
-
-function refreshElephantVisible(x, y, open)
-{
-    var elephantPos =
-        [
-            [x - 1, y - 1],
-            [x - 1, y + 1],
-            [x + 1, y - 1],
-            [x + 1, y + 1]
-        ];
-
-    for (var i = 0; i < elephantPos.length; ++i)
-    {
-        var pos = elephantPos[i];
-        var x = pos[0];
-        var y = pos[1];
-        if (x < 0 || x > 8 ||
-            y < 0 || y > 9)
-        {
-            continue;
-        }
-
-        refreshChessVisible(3, x, y, open);
-    }
-}
-
-function refreshCannonAndCarVisible(x, y, open)
-{
-    for (var i = 0; i < 9; ++i)
-    {
-        refreshChessVisible(4, i, y, open);
-        refreshChessVisible(6, i, y, open);
-    }
-
-    for (var j = 0; j < 10; ++j)
-    {
-        refreshChessVisible(4, x, j, open);
-        refreshChessVisible(6, x, j, open);
-    }
-}
-
-function refreshKingVisible(open)
-{
-    var result = findChessPos("a1");
-    if (result[0])
-    {
-        refreshChessVisible(1, result[1], result[2], open);
-    }
-
-    var result = findChessPos("b1");
-    if (result[0])
-    {
-        refreshChessVisible(1, result[1], result[2], open);
-    }
-}
-
-function refreshSoldierVisible(x, y, open)
-{
-    var soldierPos =
-        [
-            [x - 1, y],
-            [x + 1, y],
-            [x, y - 1],
-            [x, y + 1]
-        ];
-
-    for (var i = 0; i < soldierPos.length; ++i)
-    {
-        var pos = soldierPos[i];
-        var x = pos[0];
-        var y = pos[1];
-        if (x < 0 || x > 8 ||
-            y < 0 || y > 9)
-        {
-            continue;
-        }
-
-        refreshChessVisible(7, x, y, open);
-    }
-}
-
-function refreshChessVisible(q, x, y, open)
-{
-    var id = Q[x][y];
-
-    if (id && id.substr(1, 1) == q)
-    {
-        var c = document.getElementById(id);
-
-        if (open)
-        {
-            openChessVisible(c, x, y);
-        }
-        else
-        {
-            closeChessVisible(c, x, y);
-        }
-    }
-}
-
-function showFog(w, x, y)
-{
-    document.getElementById("f"+ w + x + y).style.visibility = "visible";
-}
-
-function hideFog(w, x, y)
-{
-    document.getElementById("f" + w + x + y).style.visibility = "hidden";
-}
-
-function showTip(w, x, y)
-{
-    document.getElementById("t" + w + x + y).style.visibility = "visible";
-}
-
-function hideTip(w, x, y)
-{
-    document.getElementById("t" + w + x + y).style.visibility = "hidden";
-}
-
-function addVisible(f, id)
-{
-    if (!inVisible(f, id))
-    {
-        f.push(id);
-    }
-}
-
-function removeVisible(f, id)
-{
-    for (var i = 0; i < f.length; ++i)
-    {
-        if (f[i] == id)
-        {
-            f.splice(i, 1);
-        }
-    }
-}
-
-function inVisible(f, id)
-{
-    for (var i = 0; i < f.length; ++i)
-    {
-        if (f[i] == id)
-        {
-            return true;
-        }
-    }
-    return false;
-}
-
-function inFog(w, x, y)
-{
-    return (document.getElementById("f" + w + x + y).style.visibility == "visible");
 }
 
 function md(event)
 {
     C = event.srcElement; //取得觸發事件的物件(棋子)
-    var w = C.id.substr(0, 1); //取得代表黑或紅方的關鍵字
+    var f = C.id.substr(0, 1); //取得代表黑或紅方的關鍵字
 
     //未輪到正確下棋方時跳出副程式
-    if (w != Turn && !Free)
+    if (f != Turn && !Free)
     {
         return;
     }
@@ -597,7 +353,29 @@ function md(event)
 
         if (event.which == 1)
         {
-            chess(C); //檢視下棋動作合法性
+            var posX = Math.round((C.style.posLeft + 30) / 64) * 64 - 30;
+            var posY = Math.round((C.style.posTop + 30) / 64) * 64 - 30;
+
+            var x2 = p2g(posX); //取得棋子移至的棋格座標X
+            var y2 = p2g(posY); //取得棋子移至的棋格座標Y
+
+            C.style.posLeft = g2p(X1); //跳回原處x1
+            C.style.posTop = g2p(Y1); //跳回原處y1
+
+            var f = C.id.substr(0, 1); //取得代表黑或紅方的關鍵字
+
+            if (f == "b")
+            {
+                X1 = 8 - X1;
+                Y1 = 9 - Y1;
+                x2 = 8 - x2;
+                y2 = 9 - y2;
+            }
+
+            C = null; //清除選定棋子物件
+
+            var c = BoardInfo[X1][Y1].chess;
+            move(c, x2, y2); //檢視下棋動作合法性
         }
         else
         {
@@ -645,110 +423,54 @@ function mout()
 }
 
 //下棋合法性檢查
-function chess(C)
+function move(c, x, y)
 {
-    var posX = Math.round((C.style.posLeft + 30) / 64) * 64 - 30;
-    var posY = Math.round((C.style.posTop + 30) / 64) * 64 - 30;
-
-    var x2 = p2g(posX); //取得棋子移至的棋格座標X
-    var y2 = p2g(posY); //取得棋子移至的棋格座標Y
-
-    C.style.posLeft = g2p(X1); //跳回原處x1
-    C.style.posTop = g2p(Y1); //跳回原處y1
-
-    var w = C.id.substr(0, 1); //取得代表黑或紅方的關鍵字
-
-    if (w == "b")
-    {
-        X1 = 8 - X1;
-        Y1 = 9 - Y1;
-        x2 = 8 - x2;
-        y2 = 9 - y2;
-    }
-
-    if (!canMove(C, X1, Y1, x2, y2) || inFog(w, x2, y2))
+    if (!canMove(c, x, y))
     {
         return;
     }
 
     //目的地有對方棋子→吃棋
-    if (A[x2][y2] != 0)
+    if (BoardInfo[x][y].chess)
     {
-        var d = document.getElementById(Q[x2][y2]);
-        d.style.visibility = "hidden"; //隱藏對方被吃的棋子
-
-
-        var dd = document.getElementById(Q[x2][y2] + "x");
-        dd.style.visibility = "hidden";//隱藏對方被吃的棋子
-
-        chessOut(d, A[x2][y2], x2, y2);
-
-        //將帥被吃了
-        if (d.id.substr(1, 1) == "1")
-        {
-            reset();
-        }//重玩囉
+        chessOut(x, y);
     }
 
-    var k = A[X1][Y1];
-
-    chessOut(C, k, X1, Y1);
-    chessIn(C, k, x2, y2);
-
-    if (w == "b")
-    {
-        x2 = 8 - x2;
-        y2 = 9 - y2;
-    }
-    C.style.posLeft = g2p(x2);
-    C.style.posTop = g2p(y2);
-
-    var cc = document.getElementById(C.id + "x");
-    cc.style.posLeft = g2p(8 - x2);//對手棋盤棋子移動X
-    cc.style.posTop = g2p(9 - y2);//對手棋盤棋子移動Y
+    chessMove(c, x, y);
 
     //紅方完成下棋
-    if (w == "a")
+    if (c.faction() == "a")
     {
         Turn = "b"; //換黑棋下
-        //msg.innerHTML = "輪到黑棋下→"; //顯示輪替訊息
-        //BG.style.borderColor = "white";//邊框變化
-        //BG0.style.borderColor = "red";//邊框變化
     }
 
     //黑方完成下棋
-    if (w == "b")
+    if (c.faction() == "b")
     {
         Turn = "a"; //換紅棋下
-        //msg.innerHTML = "←輪到紅棋下";  //顯示輪替訊息
-        //BG0.style.borderColor = "white";//邊框變化
-        //BG.style.borderColor = "red";//邊框變化
     }
 
-    refreshFog();
-    refreshTip();
-
-    C = null; //清除選定棋子物件
+    updateBoard();
 }
 
-function canAttackKing(c, x, y)
+function canAttackKing(c)
 {
-    var w = ((c.id.substr(0, 1) == "a") ? "b1" : "a1");
+    var id = ((c.faction() == "a") ? "b1" : "a1");
 
-    var result = findChessPos(w);
+    var result = findChessPos(id);
     if (result[0])
     {
-        return canMove(c, x, y, result[1], result[2]);
+        return canAttack(c, result[1], result[2]);
     }
 
     return false;
 }
 
-function canAttackPalace(c, x, y)
+function canAttackPalace(c)
 {
     var posStart, posEnd;
 
-    if (c.id.substr(0, 1) == "a")
+    if (c.faction() == "a")
     {
         posStart = [3, 0];
         posEnd = [6, 3];
@@ -763,7 +485,7 @@ function canAttackPalace(c, x, y)
     {
         for (var j = posStart[1]; j < posEnd[1]; ++j)
         {
-            if (canAttack(c, x, y, i, j))
+            if (canAttack(c, i, j))
             {
                 return true;
             }
@@ -774,105 +496,111 @@ function canAttackPalace(c, x, y)
 }
 
 //宮在攻擊範圍內
-function canAttack(c, x1, y1, x2, y2)
+function canAttack(c, x, y)
 {
-    var k = A[x1][y1];
-
-    switch (k)
+    switch (c.k)
     {
     case 1: //帥
     case -1: //將
-        return straight(x1, y1, x2, y2) && (between(x1, y1, x2, y2) == 0);
+        return straight(c.x, c.y, x, y) && (between(c.x, c.y, x, y) == 0);
 
     case 6: //炮
     case -6: //包
-        return straight(x1, y1, x2, y2) && (between(x1, y1, x2, y2) == 1);
+        return straight(c.x, c.y, x, y) && (between(c.x, c.y, x, y) == 1);
     }
 
-    return canMove(c, x1, y1, x2, y2);
+    return canMove(c, x, y);
 }
 
-function canVisible(c, x1, y1, x2, y2)
+function canVisible(c, x, y)
 {
-    var k = A[x1][y1];
-
     var legal = false;
-    switch (k)
+    switch (c.k)
     {
     case 1: //帥
     case -1: //將
-        legal = straight(x1, y1, x2, y2);
+        legal = straight(c.x, c.y, x, y);
         break;
+
     case 2: //仕
     case -2: //士
-        legal = dgn(1, x1, y1, x2, y2) || step(1, x1, y1, x2, y2);
+        legal = dgn(1, c.x, c.y, x, y) || step(1, c.x, c.y, x, y);
         break;
+
     case 3: //相
     case -3: //象
-        legal = dgn(1, x1, y1, x2, y2) ||dgn(2, x1, y1, x2, y2) || step(1, x1, y1, x2, y2) || step(2, x1, y1, x2, y2);
+        legal = dgn(1, c.x, c.y, x, y) ||dgn(2, c.x, c.y, x, y) || step(1, c.x, c.y, x, y) || step(2, c.x, c.y, x, y);
         break;
+
     case 5: //傌
     case -5: //馬
-        legal = (horsestep(x1, y1, x2, y2) && freeHorse(x1, y1, x2, y2)) || step(1, x1, y1, x2, y2) || (step(2, x1, y1, x2, y2) && between(x1, y1, x2, y2) == 0);
+        legal = (horsestep(c.x, c.y, x, y) && freeHorse(c.x, c.y, x, y)) || step(1, c.x, c.y, x, y) || (step(2, c.x, c.y, x, y) && between(c.x, c.y, x, y) == 0);
         break;
+
     case 6: //炮
     case -6: //包
-        legal = (straight(x1, y1, x2, y2) && between(x1, y1, x2, y2) < 2);
+        legal = (straight(c.x, c.y, x, y) && between(c.x, c.y, x, y) < 2);
         break;
+
     case 7: //兵
     case -7: //卒
-        legal = step(1, x1, y1, x2, y2) || dgn(1, x1, y1, x2, y2);
+        legal = step(1, c.x, c.y, x, y) || dgn(1, c.x, c.y, x, y);
         break;
     }
 
-    return legal || canMove(c, x1, y1, x2, y2);
+    return legal || canMove(c, x, y);
 }
 
-function canMove(c, x1, y1, x2, y2)
+function canMove(c, x, y)
 {
-    var w = c.id.substr(0, 1);
-    var k = A[x1][y1];
-
     //超出棋盤或有我方棋子
-    if (outside(x2, y2) || occupy(k, x2, y2))
+    if (outside(x, y) || occupy(c, x, y))
     {
         return false;
     }
 
     var legal = false;
-    switch (k)
+    switch (c.k)
     {
     case 1: //帥
     case -1: //將
-        legal = step(1, x1, y1, x2, y2) && inpalace(w, x2, y2);
+        legal = step(1, c.x, c.y, x, y) && inpalace(c.faction(), x, y);
         break;
+
     case 2: //仕
     case -2: //士
-        legal = dgn(1, x1, y1, x2, y2) && inpalace(w, x2, y2);
+        legal = dgn(1, c.x, c.y, x, y) && inpalace(c.faction(), x, y);
         break;
+
     case 3: //相
-        legal = dgn(2, x1, y1, x2, y2) && (y2 >= 5) && freeElephant(x1, y1, x2, y2);
+        legal = dgn(2, c.x, c.y, x, y) && (y >= 5) && freeElephant(c.x, c.y, x, y);
         break;
+
     case -3: //象
-        legal = dgn(2, x1, y1, x2, y2) && (y2 <= 4) && freeElephant(x1, y1, x2, y2);
+        legal = dgn(2, c.x, c.y, x, y) && (y <= 4) && freeElephant(c.x, c.y, x, y);
         break;
+
     case 4: //俥
     case -4: //車
-        legal = straight(x1, y1, x2, y2) && between(x1, y1, x2, y2) == 0;
+        legal = straight(c.x, c.y, x, y) && between(c.x, c.y, x, y) == 0;
         break;
+
     case 5: //傌
     case -5: //馬
-        legal = horsestep(x1, y1, x2, y2) && freeHorse(x1, y1, x2, y2);
+        legal = horsestep(c.x, c.y, x, y) && freeHorse(c.x, c.y, x, y);
         break;
+
     case 6: //炮
     case -6: //包
-        legal = straight(x1, y1, x2, y2) && cannonStep(x1, y1, x2, y2);
+        legal = straight(c.x, c.y, x, y) && cannonStep(c, x, y);
         break;
+
     case 7: //兵
-        legal = step(1, x1, y1, x2, y2) && soldier(1, y1, y2);
+        legal = step(1, c.x, c.y, x, y) && soldier(1, c.y, y);
         break;
+
     case -7: //卒
-        legal = step(1, x1, y1, x2, y2) && soldier(-1, y1, y2);
+        legal = step(1, c.x, c.y, x, y) && soldier(-1, c.y, y);
         break;
     }
 
@@ -905,12 +633,15 @@ function outside(x, y)
 }
 
 //棋格有我方棋子
-function occupy(k, x, y)
+function occupy(c, x, y)
 {
-    if (k * A[x][y] > 0)
+    var c2 = BoardInfo[x][y].chess;
+    if (c2 &&
+        c.k * c2.k > 0)
     {
         return true;
     }
+
     return false;
 }
 
@@ -957,11 +688,14 @@ function freeElephant(x1, y1, x2, y2)
 {
     var xx = Math.round((x1 + x2) / 2);
     var yy = Math.round((y1 + y2) / 2);
-    if (A[xx][yy] == 0)
+
+    var c = BoardInfo[xx][yy].chess;
+    if (c)
     {
-        return true;
+        return false;
     }
-    return false;
+
+    return true;
 }
 
 //直行
@@ -983,7 +717,7 @@ function between(x1, y1, x2, y2)
     {
         for (var i = x2 + 1; i < x1; i++)
         {
-            if (A[i][y1] != 0)
+            if (BoardInfo[i][y1].chess)
             {
                 n += 1;
             }
@@ -993,7 +727,7 @@ function between(x1, y1, x2, y2)
     {
         for (var i = x1 + 1; i < x2; i++)
         {
-            if (A[i][y1] != 0)
+            if (BoardInfo[i][y1].chess)
             {
                 n += 1;
             }
@@ -1003,7 +737,7 @@ function between(x1, y1, x2, y2)
     {
         for (var j = y2 + 1; j < y1; j++)
         {
-            if (A[x1][j] != 0)
+            if (BoardInfo[x1][j].chess)
             {
                 n += 1;
             }
@@ -1013,7 +747,7 @@ function between(x1, y1, x2, y2)
     {
         for (var j = y1 + 1; j < y2; j++)
         {
-            if (A[x1][j] != 0)
+            if (BoardInfo[x1][j].chess)
             {
                 n += 1;
             }
@@ -1037,19 +771,19 @@ function horsestep(x1, y1, x2, y2)
 //拐馬腳的規則
 function freeHorse(x1, y1, x2, y2)
 {
-    if (x1 - x2 == 2 && A[x1 - 1][y1] != 0)
+    if (x1 - x2 == 2 && BoardInfo[x1 - 1][y1].chess)
     {
         return false;
     }
-    if (x2 - x1 == 2 && A[x1 + 1][y1] != 0)
+    if (x2 - x1 == 2 && BoardInfo[x1 + 1][y1].chess)
     {
         return false;
     }
-    if (y1 - y2 == 2 && A[x1][y1 - 1] != 0)
+    if (y1 - y2 == 2 && BoardInfo[x1][y1 - 1].chess)
     {
         return false;
     }
-    if (y2 - y1 == 2 && A[x1][y1 + 1] != 0)
+    if (y2 - y1 == 2 && BoardInfo[x1][y1 + 1].chess)
     {
         return false;
     }
@@ -1057,14 +791,16 @@ function freeHorse(x1, y1, x2, y2)
 }
 
 //炮與包的規則
-function cannonStep(x1, y1, x2, y2)
+function cannonStep(c, x, y)
 {
-    var btw = between(x1, y1, x2, y2);
-    if (btw == 0 && A[x2][y2] == 0)
+    var c2 = BoardInfo[x][y].chess;
+
+    var btw = between(c.x, c.y, x, y);
+    if (btw == 0 && c2 == null)
     {
         return true;
     }
-    if (btw == 1 && A[x1][y1] * A[x2][y2] < 0)
+    if (btw == 1 && c.k * c2.k < 0)
     {
         return true;
     }
@@ -1106,7 +842,8 @@ function findChessPos(id)
     {
         for (var j = 0; j < 10; ++j)
         {
-            if (Q[i][j] == id)
+            var c = BoardInfo[i][j].chess;
+            if (c && c.id == id)
             {
                 return [true, i, j];
             }
