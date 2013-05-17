@@ -1,13 +1,32 @@
-function Chess(id, k, d, dd, board)
+function Chess(id, k, hp, atk, d, dd, board)
 {
     this.id = id;
     this.k = k;
+    this.hp = hp;
+    this.atk = atk;
     this.d = d;
     this.dd = dd;
     this.x = 0;
     this.y = 0;
     this.board = board;
 }
+
+Chess.prototype.attack = function(c)
+{
+    if (c.hp > this.atk)
+    {
+        c.hp -= this.atk;
+    }
+    else
+    {
+        c.hp = 0;
+    }
+};
+
+Chess.prototype.isDie = function()
+{
+    return this.hp == 0;
+};
 
 Chess.prototype.faction = function()
 {

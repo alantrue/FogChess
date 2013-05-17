@@ -75,12 +75,29 @@ Board.prototype.move = function(x1, y1, x2, y2)
     }
 
     //目的地有對方棋子→吃棋
-    if (this.slots[x2][y2].chess)
+    var c2 = this.slots[x2][y2].chess;
+    if (c2)
     {
-        this.chessOut(x2, y2);
-    }
+        c.attack(c2);
 
-    this.chessMove(c, x2, y2);
+        if (c2.isDie())
+        {
+            this.chessOut(x2, y2);
+            this.chessMove(c, x2, y2);
+        }
+        else if (c2.canMove(x1, y1))
+        {
+            c2.attack(c);
+            if (c.isDie())
+            {
+                this.chessOut(x1, y1);
+            }
+        }
+    }
+    else
+    {
+        this.chessMove(c, x2, y2);
+    }
 
     return true;
 };
