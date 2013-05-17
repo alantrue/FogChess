@@ -86,7 +86,9 @@ function initChess(id, k, x, y, hp, atk)
     d.onmousedown = mouseDown;
     d.onmousemove = mouseMove;
     var h = createHpText(id, x, y, hp);
+    h.onmousemove = mouseMove;
     var a = createAtkText(id, x, y, atk);
+    a.onmousemove = mouseMove;
 
     var dd = createElement(id + "x", x, y, 1, id.substr(0, 2) + ".png");
     var hh = createHpText(id + "x", x, y, hp);
@@ -187,7 +189,7 @@ function createHpText(id, x, y, hp)
     var newDiv = document.createElement("div");
     newDiv.id = "h" + id;
     newDiv.style.position = "absolute";
-    newDiv.style.zIndex = 2;
+    newDiv.style.zIndex = 1;
     newDiv.innerHTML = hp;
 
     return newDiv;
@@ -198,7 +200,7 @@ function createAtkText(id, x, y, atk)
     var newDiv = document.createElement("div");
     newDiv.id = "a" + id;
     newDiv.style.position = "absolute";
-    newDiv.style.zIndex = 2;
+    newDiv.style.zIndex = 1;
     newDiv.innerHTML = atk;
 
     return newDiv;
@@ -208,10 +210,6 @@ function mouseDown(event)
 {
     C = event.srcElement; //取得觸發事件的物件(棋子)
     var f = C.id.substr(0, 1); //取得代表黑或紅方的關鍵字
-
-    Hp = document.getElementById("h" + C.id);
-    Atk = document.getElementById("a" + C.id);
-
 
     //未輪到正確下棋方時跳出副程式
     if (f != Turn && !Free)
@@ -295,6 +293,11 @@ function startDrag(x, y)
     C.style.zIndex = 2; //提升拖曳中棋子的層次
     C.style.cursor = "pointer"; //改變游標為手指按棋的圖示
 
+    Hp = document.getElementById("h" + C.id);
+    Hp.style.zIndex = 2; //提升拖曳中棋子的層次
+    Atk = document.getElementById("a" + C.id);
+    Atk.style.zIndex = 2; //提升拖曳中棋子的層次
+
     Mdx = x; //取得拖曳起點X
     Mdy = y; //取得拖曳起點Y
     X1 = p2g(C.style.posLeft); //換算網頁像素點座標為棋盤座標X
@@ -308,8 +311,10 @@ function endDrag()
     C.style.zIndex = 1;
     C.style.posLeft = g2p(X1);
     C.style.posTop = g2p(Y1);
+    Hp.style.zIndex = 1;
     Hp.style.posLeft = g2p(X1);
     Hp.style.posTop = g2p(Y1);
+    Atk.style.zIndex = 1;
     Atk.style.posLeft = g2p(X1);
     Atk.style.posTop = g2p(Y1) + 34;
 }
